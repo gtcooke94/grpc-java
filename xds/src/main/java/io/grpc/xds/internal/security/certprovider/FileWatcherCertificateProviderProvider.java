@@ -34,39 +34,42 @@ import java.util.concurrent.ScheduledExecutorService;
 /**
  * Provider of {@link FileWatcherCertificateProvider}s.
  */
-public final class FileWatcherCertificateProviderProvider implements CertificateProviderProvider {
+public final class FileWatcherCertificateProviderProvider
+    implements CertificateProviderProvider {
 
   @VisibleForTesting
-  public static boolean enableSpiffe = GrpcUtil.getFlag("GRPC_EXPERIMENTAL_SPIFFE_TRUST_BUNDLE_MAP",
-      false);
+  public static boolean enableSpiffe =
+      GrpcUtil.getFlag("GRPC_EXPERIMENTAL_XDS_MTLS_SPIFFE", false);
   private static final String CERT_FILE_KEY = "certificate_file";
   private static final String KEY_FILE_KEY = "private_key_file";
   private static final String ROOT_FILE_KEY = "ca_certificate_file";
-  private static final String SPIFFE_TRUST_MAP_FILE_KEY = "spiffe_trust_bundle_map_file";
+  private static final String SPIFFE_TRUST_MAP_FILE_KEY =
+      "spiffe_trust_bundle_map_file";
   private static final String REFRESH_INTERVAL_KEY = "refresh_interval";
 
   @VisibleForTesting static final long REFRESH_INTERVAL_DEFAULT = 600L;
 
-
   static final String FILE_WATCHER_PROVIDER_NAME = "file_watcher";
 
-  final FileWatcherCertificateProvider.Factory fileWatcherCertificateProviderFactory;
+  final FileWatcherCertificateProvider
+      .Factory fileWatcherCertificateProviderFactory;
   private final ScheduledExecutorServiceFactory scheduledExecutorServiceFactory;
   private final TimeProvider timeProvider;
 
   FileWatcherCertificateProviderProvider() {
-    this(
-        FileWatcherCertificateProvider.Factory.getInstance(),
-        ScheduledExecutorServiceFactory.DEFAULT_INSTANCE,
-        TimeProvider.SYSTEM_TIME_PROVIDER);
+    this(FileWatcherCertificateProvider.Factory.getInstance(),
+         ScheduledExecutorServiceFactory.DEFAULT_INSTANCE,
+         TimeProvider.SYSTEM_TIME_PROVIDER);
   }
 
   @VisibleForTesting
   FileWatcherCertificateProviderProvider(
-      FileWatcherCertificateProvider.Factory fileWatcherCertificateProviderFactory,
+      FileWatcherCertificateProvider
+          .Factory fileWatcherCertificateProviderFactory,
       ScheduledExecutorServiceFactory scheduledExecutorServiceFactory,
       TimeProvider timeProvider) {
-    this.fileWatcherCertificateProviderFactory = fileWatcherCertificateProviderFactory;
+    this.fileWatcherCertificateProviderFactory =
+        fileWatcherCertificateProviderFactory;
     this.scheduledExecutorServiceFactory = scheduledExecutorServiceFactory;
     this.timeProvider = timeProvider;
   }
@@ -77,24 +80,22 @@ public final class FileWatcherCertificateProviderProvider implements Certificate
   }
 
   @Override
-  public CertificateProvider createCertificateProvider(
-      Object config, CertificateProvider.DistributorWatcher watcher, boolean notifyCertUpdates) {
+  public CertificateProvider
+  createCertificateProvider(Object config,
+                            CertificateProvider.DistributorWatcher watcher,
+                            boolean notifyCertUpdates) {
 
     Config configObj = validateAndTranslateConfig(config);
     return fileWatcherCertificateProviderFactory.create(
-        watcher,
-        notifyCertUpdates,
-        configObj.certFile,
-        configObj.keyFile,
-        configObj.rootFile,
-        configObj.spiffeTrustMapFile,
-        configObj.refrehInterval,
-        scheduledExecutorServiceFactory.create(),
+        watcher, notifyCertUpdates, configObj.certFile, configObj.keyFile,
+        configObj.rootFile, configObj.spiffeTrustMapFile,
+        configObj.refrehInterval, scheduledExecutorServiceFactory.create(),
         timeProvider);
   }
 
   private static String checkForNullAndGet(Map<String, ?> map, String key) {
-    return checkNotNull(JsonUtil.getString(map, key), "'" + key + "' is required in the config");
+    return checkNotNull(JsonUtil.getString(map, key),
+                        "'" + key + "' is required in the config");
   }
 
   private static Config validateAndTranslateConfig(Object config) {
@@ -105,25 +106,29 @@ public final class FileWatcherCertificateProviderProvider implements Certificate
     configObj.certFile = checkForNullAndGet(map, CERT_FILE_KEY);
     configObj.keyFile = checkForNullAndGet(map, KEY_FILE_KEY);
     if (enableSpiffe) {
-      if (!map.containsKey(ROOT_FILE_KEY) && !map.containsKey(SPIFFE_TRUST_MAP_FILE_KEY)) {
+      if (!map.containsKey(ROOT_FILE_KEY) &&
+          !map.containsKey(SPIFFE_TRUST_MAP_FILE_KEY)) {
         throw new NullPointerException(
             String.format("either '%s' or '%s' is required in the config",
-                ROOT_FILE_KEY, SPIFFE_TRUST_MAP_FILE_KEY));
+                          ROOT_FILE_KEY, SPIFFE_TRUST_MAP_FILE_KEY));
       }
       if (map.containsKey(SPIFFE_TRUST_MAP_FILE_KEY)) {
-        configObj.spiffeTrustMapFile = JsonUtil.getString(map, SPIFFE_TRUST_MAP_FILE_KEY);
+        configObj.spiffeTrustMapFile =
+            JsonUtil.getString(map, SPIFFE_TRUST_MAP_FILE_KEY);
       } else {
         configObj.rootFile = JsonUtil.getString(map, ROOT_FILE_KEY);
       }
     } else {
       configObj.rootFile = checkForNullAndGet(map, ROOT_FILE_KEY);
     }
-    String refreshIntervalString = JsonUtil.getString(map, REFRESH_INTERVAL_KEY);
+    String refreshIntervalString =
+        JsonUtil.getString(map, REFRESH_INTERVAL_KEY);
     if (refreshIntervalString != null) {
       try {
         Duration duration = Durations.parse(refreshIntervalString);
         configObj.refrehInterval = duration.getSeconds();
-        checkArgument(configObj.refrehInterval > 0L, "refreshInterval needs to be greater than 0");
+        checkArgument(configObj.refrehInterval > 0L,
+                      "refreshInterval needs to be greater than 0");
       } catch (ParseException e) {
         throw new IllegalArgumentException(e);
       }
@@ -138,12 +143,12 @@ public final class FileWatcherCertificateProviderProvider implements Certificate
 
     private static final ScheduledExecutorServiceFactory DEFAULT_INSTANCE =
         new ScheduledExecutorServiceFactory() {
-
           @Override
           ScheduledExecutorService create() {
             return Executors.newSingleThreadScheduledExecutor(
                 new ThreadFactoryBuilder()
-                    .setNameFormat("fileWatcher" + "-%d")
+                    .setNameFormat("fileWatcher"
+                                   + "-%d")
                     .setDaemon(true)
                     .build());
           }
